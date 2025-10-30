@@ -1,0 +1,40 @@
+# Reddit Lite - Project Guidelines
+
+## Tech Stack
+- Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Zustand (State Management)
+- Lucide React (Icons)
+- date-fns (Date utilities)
+
+## Project Structure
+- `/app` - Next.js pages and routes
+- `/components` - Reusable React components
+- `/lib` - Utilities, types, store, and mock data
+
+## Code Style
+- Use TypeScript for all files
+- Use 'use client' directive for client components
+- Prefer functional components with hooks
+- Use Tailwind CSS for styling
+- Keep components small and focused
+
+## State Management
+- Use Zustand for global state (feed, votes)
+- Use React hooks for local state
+- Keep state close to where it's used
+
+## Routing
+- Use Next.js App Router conventions
+- Dynamic routes: [slug] or [id]
+- Use `use()` hook for async params in client components
+
+## Styling
+- Mobile-first responsive design
+- Dark mode support via Tailwind
+- Consistent spacing and colors
+- Use zinc color palette for neutrals
+- Orange (500/600) for primary actions
+

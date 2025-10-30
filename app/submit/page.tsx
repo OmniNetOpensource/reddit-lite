@@ -1,35 +1,40 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFeed } from '@/lib/store/use-feed';
-import { useAuth } from '@/lib/hooks/use-auth';
-import { getCommunities } from '@/lib/api/communities';
-import { createPost } from '@/lib/api/posts';
-import { Community } from '@/lib/types';
-import { FileText, Link as LinkIcon, Image as ImageIcon, Loader2 } from 'lucide-react';
-import clsx from 'clsx';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useFeed } from "@/lib/store/use-feed";
+import { useAuth } from "@/lib/hooks/use-auth";
+import { getCommunities } from "@/lib/api/communities";
+import { createPost } from "@/lib/api/posts";
+import { Community } from "@/lib/types";
+import {
+  FileText,
+  Link as LinkIcon,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
+import clsx from "clsx";
 
-type PostType = 'text' | 'link' | 'image';
+type PostType = "text" | "link" | "image";
 
 export default function SubmitPage() {
   const router = useRouter();
   const { addPost } = useFeed();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  
+
   const [communities, setCommunities] = useState<Community[]>([]);
-  const [postType, setPostType] = useState<PostType>('text');
-  const [selectedCommunity, setSelectedCommunity] = useState('');
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [url, setUrl] = useState('');
+  const [postType, setPostType] = useState<PostType>("text");
+  const [selectedCommunity, setSelectedCommunity] = useState("");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [url, setUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     // Redirect if not authenticated
     if (!authLoading && !isAuthenticated) {
-      router.push('/?auth=signin');
+      router.push("/?auth=signin");
       return;
     }
 
@@ -42,7 +47,7 @@ export default function SubmitPage() {
           setSelectedCommunity(data[0].id);
         }
       } catch (err) {
-        console.error('Error loading communities:', err);
+        console.error("Error loading communities:", err);
       }
     };
 
@@ -53,20 +58,20 @@ export default function SubmitPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    
+    setError("");
+
     if (!title.trim()) {
-      setError('Please enter a title');
+      setError("Please enter a title");
       return;
     }
 
-    if (postType === 'link' && !url.trim()) {
-      setError('Please enter a URL');
+    if (postType === "link" && !url.trim()) {
+      setError("Please enter a URL");
       return;
     }
 
-    if (postType === 'image' && !url.trim()) {
-      setError('Please enter an image URL');
+    if (postType === "image" && !url.trim()) {
+      setError("Please enter an image URL");
       return;
     }
 
@@ -75,18 +80,18 @@ export default function SubmitPage() {
     try {
       const newPost = await createPost({
         title: title.trim(),
-        content: postType === 'text' ? content.trim() : undefined,
+        content: postType === "text" ? content.trim() : undefined,
         type: postType,
-        url: postType === 'link' ? url : undefined,
-        imageUrl: postType === 'image' ? url : undefined,
+        url: postType === "link" ? url : undefined,
+        imageUrl: postType === "image" ? url : undefined,
         communityId: selectedCommunity,
       });
 
       addPost(newPost);
       router.push(`/post/${newPost.id}`);
-    } catch (err: any) {
-      console.error('Error creating post:', err);
-      setError(err.message || 'Failed to create post');
+    } catch (err: unknown) {
+      console.error("Error creating post:", err);
+      setError((err as Error).message || "Failed to create post");
       setIsSubmitting(false);
     }
   };
@@ -104,9 +109,21 @@ export default function SubmitPage() {
   }
 
   const postTypes = [
-    { value: 'text' as PostType, label: 'Text', icon: <FileText className="h-5 w-5" /> },
-    { value: 'link' as PostType, label: 'Link', icon: <LinkIcon className="h-5 w-5" /> },
-    { value: 'image' as PostType, label: 'Image', icon: <ImageIcon className="h-5 w-5" /> },
+    {
+      value: "text" as PostType,
+      label: "Text",
+      icon: <FileText className="h-5 w-5" />,
+    },
+    {
+      value: "link" as PostType,
+      label: "Link",
+      icon: <LinkIcon className="h-5 w-5" />,
+    },
+    {
+      value: "image" as PostType,
+      label: "Image",
+      icon: <ImageIcon className="h-5 w-5" />,
+    },
   ];
 
   return (
@@ -147,10 +164,10 @@ export default function SubmitPage() {
               type="button"
               onClick={() => setPostType(type.value)}
               className={clsx(
-                'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium transition-colors',
+                "flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-medium transition-colors",
                 postType === type.value
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                  : 'hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  : "hover:bg-zinc-100 dark:hover:bg-zinc-900"
               )}
             >
               {type.icon}
@@ -170,14 +187,12 @@ export default function SubmitPage() {
             className="w-full bg-transparent text-lg font-medium outline-none placeholder:text-zinc-400"
             required
           />
-          <div className="mt-2 text-xs text-zinc-500">
-            {title.length}/300
-          </div>
+          <div className="mt-2 text-xs text-zinc-500">{title.length}/300</div>
         </div>
 
         {/* Content based on post type */}
         <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-          {postType === 'text' && (
+          {postType === "text" && (
             <textarea
               placeholder="Text (optional)"
               value={content}
@@ -187,7 +202,7 @@ export default function SubmitPage() {
             />
           )}
 
-          {postType === 'link' && (
+          {postType === "link" && (
             <input
               type="url"
               placeholder="URL"
@@ -198,7 +213,7 @@ export default function SubmitPage() {
             />
           )}
 
-          {postType === 'image' && (
+          {postType === "image" && (
             <input
               type="url"
               placeholder="Image URL"
@@ -226,7 +241,7 @@ export default function SubmitPage() {
             className="flex items-center gap-2 rounded-full bg-orange-500 px-6 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isSubmitting ? 'Posting...' : 'Post'}
+            {isSubmitting ? "Posting..." : "Post"}
           </button>
         </div>
       </form>

@@ -83,7 +83,7 @@ export function useAuth() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({

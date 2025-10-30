@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, Share2, Bookmark, ArrowUp, ArrowDown } from 'lucide-react';
 import { getPostById } from '@/lib/api/posts';
@@ -123,9 +124,11 @@ export default async function PostPage(props: PostPageProps) {
 
               {post.imageUrl && post.type === 'image' && (
                 <div className="mt-4">
-                  <img
+                  <Image
                     src={post.imageUrl}
                     alt={post.title}
+                    width={600}
+                    height={400}
                     className="max-w-full rounded-lg"
                   />
                 </div>

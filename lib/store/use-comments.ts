@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Comment } from '../types';
-import { getCommentsByPostId, createComment, voteComment, getUserCommentVotes } from '../api/comments';
+import { getCommentsByPostId, voteComment, getUserCommentVotes } from '../api/comments';
 
 interface CommentVote {
   commentId: string;
@@ -48,10 +48,10 @@ export const useComments = create<CommentsState>((set, get) => ({
       
       const commentIds = getAllCommentIds(comments);
       await get().loadUserVotes(commentIds);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching comments:', error);
       set({ 
-        error: error.message || 'Failed to fetch comments',
+        error: (error as Error).message || 'Failed to fetch comments',
         isLoading: false 
       });
     }

@@ -1,6 +1,11 @@
 import { createClient } from '../supabase/client';
 import { Community, CreateCommunityInput, Database } from '../types';
 
+// Type definitions for query results with joined data
+type CommunityMemberWithCommunity = {
+  community: Database['public']['Tables']['communities']['Row'];
+};
+
 // Helper function to transform database row to Community type
 function transformCommunity(row: Database['public']['Tables']['communities']['Row']): Community {
   return {
@@ -238,9 +243,9 @@ export async function getUserCommunities(userId?: string): Promise<Community[]> 
     return [];
   }
 
-  return data
-    .map((item: any) => item.community)
-    .filter((community: any) => community !== null)
+  return (data as unknown as CommunityMemberWithCommunity[])
+    .map((item) => item.community)
+    .filter((community: Database['public']['Tables']['communities']['Row']) => community !== null)
     .map(transformCommunity);
 }
 

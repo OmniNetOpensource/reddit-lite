@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { X } from 'lucide-react';
-import { useAuth } from '@/lib/hooks/use-auth';
+import { useState } from "react";
+import { X } from "lucide-react";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 interface SignInModalProps {
   onClose: () => void;
@@ -11,21 +11,21 @@ interface SignInModalProps {
 
 export function SignInModal({ onClose, onSwitchToSignUp }: SignInModalProps) {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setIsLoading(true);
 
     try {
       await signIn(email, password);
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+    } catch (err: unknown) {
+      setError((err as Error).message || "Failed to sign in");
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +70,10 @@ export function SignInModal({ onClose, onSwitchToSignUp }: SignInModalProps) {
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-medium">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium"
+            >
               Password
             </label>
             <input
@@ -89,13 +92,13 @@ export function SignInModal({ onClose, onSwitchToSignUp }: SignInModalProps) {
             disabled={isLoading}
             className="w-full rounded-full bg-orange-500 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
         {/* Switch to Sign Up */}
         <div className="mt-4 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{" "}
           <button
             onClick={onSwitchToSignUp}
             className="font-medium text-orange-500 hover:text-orange-600"
@@ -107,4 +110,3 @@ export function SignInModal({ onClose, onSwitchToSignUp }: SignInModalProps) {
     </div>
   );
 }
-

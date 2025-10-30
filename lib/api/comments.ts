@@ -1,6 +1,11 @@
 import { createClient } from '../supabase/client';
 import { Comment, CreateCommentInput, UpdateCommentInput, Database } from '../types';
 
+// Type definitions for query results with joined data
+type CommentWithAuthor = Database['public']['Tables']['comments']['Row'] & {
+  author: Database['public']['Tables']['profiles']['Row'];
+};
+
 // Helper function to transform database row to Comment type
 function transformComment(
   commentRow: Database['public']['Tables']['comments']['Row'],
@@ -102,7 +107,7 @@ export async function getCommentsByPostId(postId: string): Promise<Comment[]> {
   }
 
   // Transform to Comment type
-  const comments = data.map((row: any) => transformComment(row, row.author));
+  const comments = data.map((row: CommentWithAuthor) => transformComment(row, row.author));
 
   // Build nested tree
   return buildCommentTree(comments);

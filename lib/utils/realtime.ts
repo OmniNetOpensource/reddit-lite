@@ -1,16 +1,17 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { createClient } from '../supabase/client';
+import { Database } from '../types';
 
 /**
  * Subscribe to new posts in real-time
  */
 export function subscribeToNewPosts(
-  onNewPost: (post: any) => void,
+  onNewPost: (post: Database['public']['Tables']['posts']['Row']) => void,
   communityId?: string
 ): RealtimeChannel {
   const supabase = createClient();
 
-  let channel = supabase
+  const channel = supabase
     .channel('posts-channel')
     .on(
       'postgres_changes',
@@ -77,7 +78,7 @@ export function subscribeToPostVotes(
  */
 export function subscribeToNewComments(
   postId: string,
-  onNewComment: (comment: any) => void
+  onNewComment: (comment: Database['public']['Tables']['comments']['Row']) => void
 ): RealtimeChannel {
   const supabase = createClient();
 

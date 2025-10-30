@@ -57,8 +57,8 @@ export function SignUpModal({ onClose, onSwitchToSignIn }: SignUpModalProps) {
 
       await signUp(email, password, username);
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign up');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to sign up');
     } finally {
       setIsLoading(false);
     }

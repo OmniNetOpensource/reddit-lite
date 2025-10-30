@@ -1,11 +1,24 @@
-import { createClient } from '../supabase/client';
-import { Post, CreatePostInput, UpdatePostInput, SortOption, Database } from '../types';
+import { createClient } from "../supabase/client";
+import {
+  Post,
+  CreatePostInput,
+  UpdatePostInput,
+  SortOption,
+  Database,
+} from "../types";
+
+// Type definitions for query results with joined data
+type PostWithAuthorAndCommunity =
+  Database["public"]["Tables"]["posts"]["Row"] & {
+    author: Database["public"]["Tables"]["profiles"]["Row"];
+    community: Database["public"]["Tables"]["communities"]["Row"];
+  };
 
 // Helper function to transform database row to Post type
 function transformPost(
-  postRow: Database['public']['Tables']['posts']['Row'],
-  author: Database['public']['Tables']['profiles']['Row'],
-  community: Database['public']['Tables']['communities']['Row']
+  postRow: Database["public"]["Tables"]["posts"]["Row"],
+  author: Database["public"]["Tables"]["profiles"]["Row"],
+  community: Database["public"]["Tables"]["communities"]["Row"]
 ): Post {
   return {
     id: postRow.id,
@@ -42,12 +55,13 @@ function transformPost(
 /**
  * Get posts with optional sorting and community filtering
  */
-export async function getPosts(sortBy: SortOption = 'hot', communitySlug?: string): Promise<Post[]> {
+export async function getPosts(
+  sortBy: SortOption = "hot",
+  communitySlug?: string
+): Promise<Post[]> {
   const supabase = createClient();
 
-  let query = supabase
-    .from('posts')
-    .select(`
+  let query = supabase.from("posts").select(`
       *,
       author:profiles!posts_author_id_fkey(*),
       community:communities!posts_community_id_fkey(*)
@@ -56,37 +70,37 @@ export async function getPosts(sortBy: SortOption = 'hot', communitySlug?: strin
   // Filter by community if provided
   if (communitySlug) {
     const { data: community } = await supabase
-      .from('communities')
-      .select('id')
-      .eq('slug', communitySlug)
+      .from("communities")
+      .select("id")
+      .eq("slug", communitySlug)
       .single();
 
     if (community) {
-      query = query.eq('community_id', community.id);
+      query = query.eq("community_id", community.id);
     }
   }
 
   // Apply sorting
   switch (sortBy) {
-    case 'new':
-      query = query.order('created_at', { ascending: false });
+    case "new":
+      query = query.order("created_at", { ascending: false });
       break;
-    case 'top':
-      query = query.order('vote_count', { ascending: false });
+    case "top":
+      query = query.order("vote_count", { ascending: false });
       break;
-    case 'hot':
-    case 'rising':
+    case "hot":
+    case "rising":
       // Fetch all and sort in memory for complex algorithms
-      query = query.order('created_at', { ascending: false });
+      query = query.order("created_at", { ascending: false });
       break;
     default:
-      query = query.order('created_at', { ascending: false });
+      query = query.order("created_at", { ascending: false });
   }
 
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching posts:', error);
+    console.error("Error fetching posts:", error);
     throw error;
   }
 
@@ -95,18 +109,22 @@ export async function getPosts(sortBy: SortOption = 'hot', communitySlug?: strin
   }
 
   // Transform to Post type
-  const posts = data.map((row: any) =>
+  const posts = data.map((row: PostWithAuthorAndCommunity) =>
     transformPost(row, row.author, row.community)
   );
 
   // Apply client-side sorting for hot/rising
-  if (sortBy === 'hot') {
+  if (sortBy === "hot") {
     posts.sort((a, b) => {
-      const aHotScore = a.votes / Math.pow((Date.now() - a.createdAt.getTime()) / 3600000 + 2, 1.5);
-      const bHotScore = b.votes / Math.pow((Date.now() - b.createdAt.getTime()) / 3600000 + 2, 1.5);
+      const aHotScore =
+        a.votes /
+        Math.pow((Date.now() - a.createdAt.getTime()) / 3600000 + 2, 1.5);
+      const bHotScore =
+        b.votes /
+        Math.pow((Date.now() - b.createdAt.getTime()) / 3600000 + 2, 1.5);
       return bHotScore - aHotScore;
     });
-  } else if (sortBy === 'rising') {
+  } else if (sortBy === "rising") {
     posts.sort((a, b) => {
       const aScore = a.votes / (Date.now() - a.createdAt.getTime());
       const bScore = b.votes / (Date.now() - b.createdAt.getTime());
@@ -124,17 +142,19 @@ export async function getPostById(id: string): Promise<Post | null> {
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from('posts')
-    .select(`
+    .from("posts")
+    .select(
+      `
       *,
       author:profiles!posts_author_id_fkey(*),
       community:communities!posts_community_id_fkey(*)
-    `)
-    .eq('id', id)
+    `
+    )
+    .eq("id", id)
     .single();
 
   if (error) {
-    console.error('Error fetching post:', error);
+    console.error("Error fetching post:", error);
     return null;
   }
 
@@ -152,32 +172,37 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
   const supabase = createClient();
 
   // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
-    throw new Error('You must be logged in to create a post');
+    throw new Error("You must be logged in to create a post");
   }
 
   // Insert post
   const { data, error } = await supabase
-    .from('posts')
+    .from("posts")
     .insert({
       title: input.title,
-      content: input.content || '',
+      content: input.content || "",
       type: input.type,
       url: input.url || null,
       image_url: input.imageUrl || null,
       author_id: user.id,
       community_id: input.communityId,
     })
-    .select(`
+    .select(
+      `
       *,
       author:profiles!posts_author_id_fkey(*),
       community:communities!posts_community_id_fkey(*)
-    `)
+    `
+    )
     .single();
 
   if (error) {
-    console.error('Error creating post:', error);
+    console.error("Error creating post:", error);
     throw error;
   }
 
@@ -187,27 +212,32 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
 /**
  * Update an existing post
  */
-export async function updatePost(id: string, input: UpdatePostInput): Promise<Post> {
+export async function updatePost(
+  id: string,
+  input: UpdatePostInput
+): Promise<Post> {
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from('posts')
+    .from("posts")
     .update({
       title: input.title,
       content: input.content,
       url: input.url,
       image_url: input.imageUrl,
     })
-    .eq('id', id)
-    .select(`
+    .eq("id", id)
+    .select(
+      `
       *,
       author:profiles!posts_author_id_fkey(*),
       community:communities!posts_community_id_fkey(*)
-    `)
+    `
+    )
     .single();
 
   if (error) {
-    console.error('Error updating post:', error);
+    console.error("Error updating post:", error);
     throw error;
   }
 
@@ -220,13 +250,10 @@ export async function updatePost(id: string, input: UpdatePostInput): Promise<Po
 export async function deletePost(id: string): Promise<void> {
   const supabase = createClient();
 
-  const { error } = await supabase
-    .from('posts')
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from("posts").delete().eq("id", id);
 
   if (error) {
-    console.error('Error deleting post:', error);
+    console.error("Error deleting post:", error);
     throw error;
   }
 }
@@ -234,43 +261,50 @@ export async function deletePost(id: string): Promise<void> {
 /**
  * Vote on a post (upsert vote record)
  */
-export async function votePost(postId: string, direction: 'up' | 'down' | null): Promise<void> {
+export async function votePost(
+  postId: string,
+  direction: "up" | "down" | null
+): Promise<void> {
   const supabase = createClient();
 
   // Get current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
-    throw new Error('You must be logged in to vote');
+    throw new Error("You must be logged in to vote");
   }
 
   // If direction is null, delete the vote
   if (direction === null) {
     const { error } = await supabase
-      .from('post_votes')
+      .from("post_votes")
       .delete()
-      .eq('user_id', user.id)
-      .eq('post_id', postId);
+      .eq("user_id", user.id)
+      .eq("post_id", postId);
 
     if (error) {
-      console.error('Error removing vote:', error);
+      console.error("Error removing vote:", error);
       throw error;
     }
     return;
   }
 
   // Otherwise, upsert the vote
-  const { error } = await supabase
-    .from('post_votes')
-    .upsert({
+  const { error } = await supabase.from("post_votes").upsert(
+    {
       user_id: user.id,
       post_id: postId,
-      vote_direction: direction === 'up' ? 1 : -1,
-    }, {
-      onConflict: 'user_id,post_id',
-    });
+      vote_direction: direction === "up" ? 1 : -1,
+    },
+    {
+      onConflict: "user_id,post_id",
+    }
+  );
 
   if (error) {
-    console.error('Error voting on post:', error);
+    console.error("Error voting on post:", error);
     throw error;
   }
 }
@@ -278,54 +312,63 @@ export async function votePost(postId: string, direction: 'up' | 'down' | null):
 /**
  * Get user's vote on a post
  */
-export async function getUserPostVote(postId: string): Promise<'up' | 'down' | null> {
+export async function getUserPostVote(
+  postId: string
+): Promise<"up" | "down" | null> {
   const supabase = createClient();
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
     return null;
   }
 
   const { data, error } = await supabase
-    .from('post_votes')
-    .select('vote_direction')
-    .eq('user_id', user.id)
-    .eq('post_id', postId)
+    .from("post_votes")
+    .select("vote_direction")
+    .eq("user_id", user.id)
+    .eq("post_id", postId)
     .maybeSingle();
 
   if (error || !data) {
     return null;
   }
 
-  return data.vote_direction === 1 ? 'up' : 'down';
+  return data.vote_direction === 1 ? "up" : "down";
 }
 
 /**
  * Get user's votes for multiple posts
  */
-export async function getUserPostVotes(postIds: string[]): Promise<Record<string, 'up' | 'down'>> {
+export async function getUserPostVotes(
+  postIds: string[]
+): Promise<Record<string, "up" | "down">> {
   const supabase = createClient();
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) {
     return {};
   }
 
   const { data, error } = await supabase
-    .from('post_votes')
-    .select('post_id, vote_direction')
-    .eq('user_id', user.id)
-    .in('post_id', postIds);
+    .from("post_votes")
+    .select("post_id, vote_direction")
+    .eq("user_id", user.id)
+    .in("post_id", postIds);
 
   if (error || !data) {
     return {};
   }
 
-  const votes: Record<string, 'up' | 'down'> = {};
+  const votes: Record<string, "up" | "down"> = {};
   data.forEach((vote) => {
-    votes[vote.post_id] = vote.vote_direction === 1 ? 'up' : 'down';
+    votes[vote.post_id] = vote.vote_direction === 1 ? "up" : "down";
   });
 
   return votes;
 }
-

@@ -36,10 +36,10 @@ export const useFeed = create<FeedState>((set, get) => ({
       // Load user votes for these posts
       const postIds = posts.map(p => p.id);
       await get().loadUserVotes(postIds);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching posts:', error);
       set({ 
-        error: error.message || 'Failed to fetch posts',
+        error: (error as Error).message || 'Failed to fetch posts',
         isLoading: false 
       });
     }

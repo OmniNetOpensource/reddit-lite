@@ -1,24 +1,49 @@
 import { create } from 'zustand';
 import { Post, Vote, SortOption } from '../types';
-import { mockPosts } from '../mock/seed';
+import { getPosts, votePost, getUserPostVotes } from '../api/posts';
 
 interface FeedState {
   posts: Post[];
   votes: Record<string, Vote>;
   sortBy: SortOption;
+  isLoading: boolean;
+  error: string | null;
   
   // Actions
+  fetchPosts: (communitySlug?: string) => Promise<void>;
   setPosts: (posts: Post[]) => void;
   addPost: (post: Post) => void;
-  vote: (postId: string, direction: 'up' | 'down') => void;
+  vote: (postId: string, direction: 'up' | 'down') => Promise<void>;
   setSortBy: (sort: SortOption) => void;
-  getSortedPosts: () => Post[];
+  loadUserVotes: (postIds: string[]) => Promise<void>;
 }
 
 export const useFeed = create<FeedState>((set, get) => ({
-  posts: mockPosts,
+  posts: [],
   votes: {},
   sortBy: 'hot',
+  isLoading: false,
+  error: null,
+  
+  fetchPosts: async (communitySlug?: string) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      const { sortBy } = get();
+      const posts = await getPosts(sortBy, communitySlug);
+      set({ posts, isLoading: false });
+      
+      // Load user votes for these posts
+      const postIds = posts.map(p => p.id);
+      await get().loadUserVotes(postIds);
+    } catch (error: any) {
+      console.error('Error fetching posts:', error);
+      set({ 
+        error: error.message || 'Failed to fetch posts',
+        isLoading: false 
+      });
+    }
+  },
   
   setPosts: (posts) => set({ posts }),
   
@@ -26,12 +51,11 @@ export const useFeed = create<FeedState>((set, get) => ({
     posts: [post, ...state.posts] 
   })),
   
-  vote: (postId, direction) => set((state) => {
-    const currentVote = state.votes[postId];
-    const post = state.posts.find(p => p.id === postId);
+  vote: async (postId, direction) => {
+    const { votes, posts } = get();
+    const currentVote = votes[postId];
     
-    if (!post) return state;
-    
+    // Determine new vote direction
     let newDirection: 'up' | 'down' | null = direction;
     let voteDelta = 0;
     
@@ -49,50 +73,53 @@ export const useFeed = create<FeedState>((set, get) => ({
       voteDelta = direction === 'up' ? 1 : -1;
     }
     
-    return {
+    // Optimistic update
+    set({
       votes: {
-        ...state.votes,
+        ...votes,
         [postId]: { postId, direction: newDirection },
       },
-      posts: state.posts.map(p => 
+      posts: posts.map(p => 
         p.id === postId 
           ? { ...p, votes: p.votes + voteDelta }
           : p
       ),
-    };
-  }),
-  
-  setSortBy: (sort) => set({ sortBy: sort }),
-  
-  getSortedPosts: () => {
-    const { posts, sortBy } = get();
-    const sortedPosts = [...posts];
+    });
     
-    switch (sortBy) {
-      case 'new':
-        return sortedPosts.sort((a, b) => 
-          b.createdAt.getTime() - a.createdAt.getTime()
-        );
+    // Make API call
+    try {
+      await votePost(postId, newDirection);
+    } catch (error) {
+      console.error('Error voting:', error);
       
-      case 'top':
-        return sortedPosts.sort((a, b) => b.votes - a.votes);
+      // Rollback on error
+      set({
+        votes,
+        posts,
+      });
       
-      case 'rising':
-        // Simple rising algorithm: recent posts with good vote ratio
-        return sortedPosts.sort((a, b) => {
-          const aScore = a.votes / (Date.now() - a.createdAt.getTime());
-          const bScore = b.votes / (Date.now() - b.createdAt.getTime());
-          return bScore - aScore;
-        });
+      throw error;
+    }
+  },
+  
+  setSortBy: (sort) => {
+    set({ sortBy: sort });
+    // Refetch posts with new sort
+    get().fetchPosts();
+  },
+  
+  loadUserVotes: async (postIds: string[]) => {
+    try {
+      const userVotes = await getUserPostVotes(postIds);
       
-      case 'hot':
-      default:
-        // Hot algorithm: combination of votes and recency
-        return sortedPosts.sort((a, b) => {
-          const aHotScore = a.votes / Math.pow((Date.now() - a.createdAt.getTime()) / 3600000 + 2, 1.5);
-          const bHotScore = b.votes / Math.pow((Date.now() - b.createdAt.getTime()) / 3600000 + 2, 1.5);
-          return bHotScore - aHotScore;
-        });
+      const votes: Record<string, Vote> = {};
+      Object.entries(userVotes).forEach(([postId, direction]) => {
+        votes[postId] = { postId, direction };
+      });
+      
+      set({ votes });
+    } catch (error) {
+      console.error('Error loading user votes:', error);
     }
   },
 }));

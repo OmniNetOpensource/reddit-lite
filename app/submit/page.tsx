@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFeed } from '@/lib/store/use-feed';
-import { mockCommunities, mockUsers } from '@/lib/mock/seed';
-import { Post } from '@/lib/types';
-import { FileText, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
+import { useAuth } from '@/lib/hooks/use-auth';
+import { getCommunities } from '@/lib/api/communities';
+import { createPost } from '@/lib/api/posts';
+import { Community } from '@/lib/types';
+import { FileText, Link as LinkIcon, Image as ImageIcon, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 type PostType = 'text' | 'link' | 'image';
@@ -13,41 +15,93 @@ type PostType = 'text' | 'link' | 'image';
 export default function SubmitPage() {
   const router = useRouter();
   const { addPost } = useFeed();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   
+  const [communities, setCommunities] = useState<Community[]>([]);
   const [postType, setPostType] = useState<PostType>('text');
-  const [selectedCommunity, setSelectedCommunity] = useState(mockCommunities[0].id);
+  const [selectedCommunity, setSelectedCommunity] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!title.trim()) {
-      alert('Please enter a title');
+  useEffect(() => {
+    // Redirect if not authenticated
+    if (!authLoading && !isAuthenticated) {
+      router.push('/?auth=signin');
       return;
     }
 
-    const community = mockCommunities.find(c => c.id === selectedCommunity);
-    if (!community) return;
-
-    const newPost: Post = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      content: postType === 'text' ? content.trim() : '',
-      author: mockUsers[0], // Using first mock user as current user
-      community,
-      votes: 1,
-      commentCount: 0,
-      createdAt: new Date(),
-      type: postType,
-      url: postType === 'link' ? url : undefined,
-      imageUrl: postType === 'image' ? url : undefined,
+    // Fetch communities
+    const loadCommunities = async () => {
+      try {
+        const data = await getCommunities();
+        setCommunities(data);
+        if (data.length > 0) {
+          setSelectedCommunity(data[0].id);
+        }
+      } catch (err) {
+        console.error('Error loading communities:', err);
+      }
     };
 
-    addPost(newPost);
-    router.push('/');
+    if (isAuthenticated) {
+      loadCommunities();
+    }
+  }, [isAuthenticated, authLoading, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!title.trim()) {
+      setError('Please enter a title');
+      return;
+    }
+
+    if (postType === 'link' && !url.trim()) {
+      setError('Please enter a URL');
+      return;
+    }
+
+    if (postType === 'image' && !url.trim()) {
+      setError('Please enter an image URL');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const newPost = await createPost({
+        title: title.trim(),
+        content: postType === 'text' ? content.trim() : undefined,
+        type: postType,
+        url: postType === 'link' ? url : undefined,
+        imageUrl: postType === 'image' ? url : undefined,
+        communityId: selectedCommunity,
+      });
+
+      addPost(newPost);
+      router.push(`/post/${newPost.id}`);
+    } catch (err: any) {
+      console.error('Error creating post:', err);
+      setError(err.message || 'Failed to create post');
+      setIsSubmitting(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="container mx-auto flex max-w-3xl items-center justify-center px-4 py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect
+  }
 
   const postTypes = [
     { value: 'text' as PostType, label: 'Text', icon: <FileText className="h-5 w-5" /> },
@@ -59,6 +113,12 @@ export default function SubmitPage() {
     <div className="container mx-auto max-w-3xl px-4 py-6">
       <h1 className="mb-6 text-2xl font-bold">Create a post</h1>
 
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+          {error}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Community Selection */}
         <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -68,9 +128,10 @@ export default function SubmitPage() {
           <select
             value={selectedCommunity}
             onChange={(e) => setSelectedCommunity(e.target.value)}
-            className="w-full rounded-md border border-zinc-200 bg-white px-4 py-2 outline-none focus:border-orange-500 dark:border-zinc-800 dark:bg-zinc-900"
+            disabled={communities.length === 0}
+            className="w-full rounded-md border border-zinc-200 bg-white px-4 py-2 outline-none focus:border-orange-500 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900"
           >
-            {mockCommunities.map((community) => (
+            {communities.map((community) => (
               <option key={community.id} value={community.id}>
                 {community.icon} r/{community.slug}
               </option>
@@ -154,15 +215,18 @@ export default function SubmitPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="rounded-full border border-zinc-200 px-6 py-2 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900"
+            disabled={isSubmitting}
+            className="rounded-full border border-zinc-200 px-6 py-2 text-sm font-medium hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="rounded-full bg-orange-500 px-6 py-2 text-sm font-medium text-white hover:bg-orange-600"
+            disabled={isSubmitting || communities.length === 0}
+            className="flex items-center gap-2 rounded-full bg-orange-500 px-6 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
           >
-            Post
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Posting...' : 'Post'}
           </button>
         </div>
       </form>

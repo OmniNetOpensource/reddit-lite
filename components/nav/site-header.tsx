@@ -1,10 +1,28 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Plus, User, Home, TrendingUp } from 'lucide-react';
-import { mockCommunities } from '@/lib/mock/seed';
+import { Search, Plus, Home, TrendingUp } from 'lucide-react';
+import { getPopularCommunities } from '@/lib/api/communities';
+import { Community } from '@/lib/types';
+import { AuthButton } from '@/components/auth/auth-button';
 
 export function SiteHeader() {
+  const [communities, setCommunities] = useState<Community[]>([]);
+
+  useEffect(() => {
+    const loadCommunities = async () => {
+      try {
+        const data = await getPopularCommunities(5);
+        setCommunities(data);
+      } catch (err) {
+        console.error('Error loading popular communities:', err);
+      }
+    };
+
+    loadCommunities();
+  }, []);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -46,9 +64,7 @@ export function SiteHeader() {
             <span className="hidden sm:inline">Create Post</span>
           </Link>
 
-          <button className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-900">
-            <User className="h-5 w-5" />
-          </button>
+          <AuthButton />
         </div>
       </div>
 
@@ -59,7 +75,7 @@ export function SiteHeader() {
             <TrendingUp className="h-4 w-4" />
             <span className="whitespace-nowrap">Popular:</span>
           </div>
-          {mockCommunities.slice(0, 5).map((community) => (
+          {communities.map((community) => (
             <Link
               key={community.id}
               href={`/r/${community.slug}`}

@@ -1,11 +1,9 @@
-'use client';
-
-import { use } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare, Share2, Bookmark, ArrowUp, ArrowDown } from 'lucide-react';
-import { getPostById, getCommentsByPostId } from '@/lib/mock/seed';
+import { getPostById } from '@/lib/api/posts';
+import { getCommentsByPostId } from '@/lib/api/comments';
 import { VoteButtons } from '@/components/post/vote-buttons';
 import { Comment } from '@/lib/types';
 
@@ -14,7 +12,7 @@ function CommentCard({ comment }: { comment: Comment }) {
     <div className="border-l-2 border-zinc-200 pl-4 dark:border-zinc-800">
       <div className="flex gap-3">
         {/* Avatar */}
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm dark:bg-zinc-800">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm dark:bg-zinc-800">
           {comment.author.avatar}
         </div>
 
@@ -65,11 +63,11 @@ interface PostPageProps {
   }>;
 }
 
-export default function PostPage(props: PostPageProps) {
-  const params = use(props.params);
+export default async function PostPage(props: PostPageProps) {
+  const params = await props.params;
   const { id } = params;
-  const post = getPostById(id);
-  const comments = getCommentsByPostId(id);
+  const post = await getPostById(id);
+  const comments = await getCommentsByPostId(id);
 
   if (!post) {
     notFound();

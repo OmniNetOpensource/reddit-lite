@@ -1,10 +1,8 @@
-'use client';
-
-import { use } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { PostCard } from '@/components/post/post-card';
-import { getCommunityBySlug, getPostsByCommunity } from '@/lib/mock/seed';
+import { getCommunityBySlug } from '@/lib/api/communities';
+import { getPosts } from '@/lib/api/posts';
 import { Users, Calendar, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -14,11 +12,11 @@ interface CommunityPageProps {
   }>;
 }
 
-export default function CommunityPage(props: CommunityPageProps) {
-  const params = use(props.params);
+export default async function CommunityPage(props: CommunityPageProps) {
+  const params = await props.params;
   const { slug } = params;
-  const community = getCommunityBySlug(slug);
-  const posts = getPostsByCommunity(slug);
+  const community = await getCommunityBySlug(slug);
+  const posts = await getPosts('new', slug);
 
   if (!community) {
     notFound();

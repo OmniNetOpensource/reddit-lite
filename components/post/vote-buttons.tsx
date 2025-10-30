@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useFeed } from '@/lib/store/use-feed';
+import { useAuth } from '@/lib/hooks/use-auth';
 import clsx from 'clsx';
 
 interface VoteButtonsProps {
@@ -12,10 +14,26 @@ interface VoteButtonsProps {
 
 export function VoteButtons({ postId, votes, layout = 'vertical' }: VoteButtonsProps) {
   const { votes: userVotes, vote } = useFeed();
+  const { isAuthenticated } = useAuth();
+  const [isVoting, setIsVoting] = useState(false);
   const userVote = userVotes[postId];
 
-  const handleVote = (direction: 'up' | 'down') => {
-    vote(postId, direction);
+  const handleVote = async (direction: 'up' | 'down') => {
+    if (!isAuthenticated) {
+      alert('Please sign in to vote');
+      return;
+    }
+
+    if (isVoting) return;
+
+    setIsVoting(true);
+    try {
+      await vote(postId, direction);
+    } catch (error) {
+      console.error('Error voting:', error);
+    } finally {
+      setIsVoting(false);
+    }
   };
 
   const formatVotes = (count: number) => {
@@ -34,8 +52,9 @@ export function VoteButtons({ postId, votes, layout = 'vertical' }: VoteButtonsP
     <div className={containerClass}>
       <button
         onClick={() => handleVote('up')}
+        disabled={isVoting}
         className={clsx(
-          'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+          'flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
           userVote?.direction === 'up'
             ? 'bg-orange-500 text-white hover:bg-orange-600'
             : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
@@ -57,8 +76,9 @@ export function VoteButtons({ postId, votes, layout = 'vertical' }: VoteButtonsP
 
       <button
         onClick={() => handleVote('down')}
+        disabled={isVoting}
         className={clsx(
-          'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
+          'flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
           userVote?.direction === 'down'
             ? 'bg-blue-500 text-white hover:bg-blue-600'
             : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'

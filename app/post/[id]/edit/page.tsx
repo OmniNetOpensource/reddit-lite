@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
-import { getPostById, updatePost } from '@/lib/api/posts';
-import { ImageUploader } from '@/components/submit/image-uploader';
-import { useAuth } from '@/lib/hooks/use-auth';
-import { Post } from '@/lib/types';
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { getPostById, updatePost } from "@/lib/api/posts";
+import { ImageUploader } from "@/components/submit/image-uploader";
+import { useAuth } from "@/lib/hooks/use-auth";
+import { Post } from "@/lib/types";
 
 export default function EditPostPage() {
   const params = useParams<{ id: string }>();
@@ -16,13 +16,13 @@ export default function EditPostPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [post, setPost] = useState<Post | null>(null);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [linkUrl, setLinkUrl] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [forbidden, setForbidden] = useState(false);
 
@@ -35,25 +35,25 @@ export default function EditPostPage() {
 
     const load = async () => {
       setLoading(true);
-      setError('');
+      setError("");
       try {
         const fetchedPost = await getPostById(postId);
         if (!fetchedPost) {
-          router.replace('/404');
+          router.replace("/404");
           return;
         }
 
         if (!cancelled) {
           setPost(fetchedPost);
           setTitle(fetchedPost.title);
-          setContent(fetchedPost.content ?? '');
-          setLinkUrl(fetchedPost.url ?? '');
+          setContent(fetchedPost.content ?? "");
+          setLinkUrl(fetchedPost.url ?? "");
           setImageUrl(fetchedPost.imageUrl ?? null);
         }
       } catch (err) {
-        console.error('Failed to load post:', err);
+        console.error("Failed to load post:", err);
         if (!cancelled) {
-          setError((err as Error).message || 'Failed to load post');
+          setError((err as Error).message || "Failed to load post");
         }
       } finally {
         if (!cancelled) {
@@ -119,20 +119,20 @@ export default function EditPostPage() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError('');
+    setError("");
 
     if (!title.trim()) {
-      setError('Title is required');
+      setError("Title is required");
       return;
     }
 
-    if (post.type === 'link' && !linkUrl.trim()) {
-      setError('Link URL is required');
+    if (post.type === "link" && !linkUrl.trim()) {
+      setError("Link URL is required");
       return;
     }
 
-    if (post.type === 'image' && !imageUrl) {
-      setError('Please upload an image');
+    if (post.type === "image" && !imageUrl) {
+      setError("Please upload an image");
       return;
     }
 
@@ -141,15 +141,15 @@ export default function EditPostPage() {
     try {
       await updatePost(post.id, {
         title: title.trim(),
-        content: post.type === 'text' ? content.trim() : '',
-        url: post.type === 'link' ? linkUrl.trim() : null,
-        imageUrl: post.type === 'image' ? imageUrl ?? null : null,
+        content: post.type === "text" ? content.trim() : undefined,
+        url: post.type === "link" ? linkUrl.trim() : undefined,
+        imageUrl: post.type === "image" ? (imageUrl ?? undefined) : undefined,
       });
 
       router.push(`/post/${post.id}`);
     } catch (err) {
-      console.error('Failed to update post:', err);
-      setError((err as Error).message || 'Failed to update post');
+      console.error("Failed to update post:", err);
+      setError((err as Error).message || "Failed to update post");
       setSubmitting(false);
     }
   };
@@ -180,7 +180,7 @@ export default function EditPostPage() {
           <div className="mt-1 text-xs text-zinc-500">{title.length}/300</div>
         </div>
 
-        {post.type === 'text' && (
+        {post.type === "text" && (
           <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Content
@@ -194,7 +194,7 @@ export default function EditPostPage() {
           </div>
         )}
 
-        {post.type === 'link' && (
+        {post.type === "link" && (
           <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Link URL
@@ -209,7 +209,7 @@ export default function EditPostPage() {
           </div>
         )}
 
-        {post.type === 'image' && (
+        {post.type === "image" && (
           <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
             <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Image
@@ -233,7 +233,7 @@ export default function EditPostPage() {
             className="flex items-center gap-2 rounded-full bg-orange-500 px-6 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {submitting ? 'Saving...' : 'Save changes'}
+            {submitting ? "Saving..." : "Save changes"}
           </button>
         </div>
       </form>

@@ -205,6 +205,23 @@ export interface Database {
           joined_at?: string;
         };
       };
+      saved_posts: {
+        Row: {
+          user_id: string;
+          post_id: string;
+          saved_at: string;
+        };
+        Insert: {
+          user_id: string;
+          post_id: string;
+          saved_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          post_id?: string;
+          saved_at?: string;
+        };
+      };
     };
   };
 }
@@ -246,6 +263,8 @@ export interface Post {
   type: 'text' | 'link' | 'image';
   url?: string;
   imageUrl?: string;
+  isSaved?: boolean;
+  savedAt?: Date;
 }
 
 export interface Comment {
@@ -257,6 +276,18 @@ export interface Comment {
   votes: number;
   createdAt: Date;
   replies?: Comment[];
+}
+
+export interface CommentWithPostContext extends Comment {
+  post: {
+    id: string;
+    title: string;
+    community: {
+      id: string;
+      slug: string;
+      name: string;
+    };
+  };
 }
 
 export interface Vote {

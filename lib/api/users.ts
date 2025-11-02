@@ -1,5 +1,11 @@
 import { createClient } from '../supabase/client';
-import { User, UpdateProfileInput, Database } from '../types';
+import {
+  User,
+  UpdateProfileInput,
+  Database,
+  Post,
+  CommentWithPostContext,
+} from '../types';
 
 // Helper function to transform database row to User type
 function transformUser(row: Database['public']['Tables']['profiles']['Row']): User {
@@ -165,5 +171,133 @@ export async function getUserStats(userId: string): Promise<{
     commentCount: commentCount || 0,
     karma: profile?.karma || 0,
   };
+}
+
+type PostRow = Database['public']['Tables']['posts']['Row'] & {
+  author: Database['public']['Tables']['profiles']['Row'];
+  community: Database['public']['Tables']['communities']['Row'];
+};
+
+function transformPost(row: PostRow): Post {
+  return {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    type: row.type as Post['type'],
+    url: row.url || undefined,
+    imageUrl: row.image_url || undefined,
+    votes: row.vote_count,
+    commentCount: row.comment_count,
+    createdAt: new Date(row.created_at),
+    author: {
+      id: row.author.id,
+      username: row.author.username,
+      avatar: row.author.avatar || undefined,
+      karma: row.author.karma,
+      bio: row.author.bio || undefined,
+      createdAt: new Date(row.author.created_at),
+    },
+    community: {
+      id: row.community.id,
+      name: row.community.name,
+      slug: row.community.slug,
+      description: row.community.description,
+      icon: row.community.icon || undefined,
+      banner: row.community.banner || undefined,
+      members: row.community.member_count,
+      creatorId: row.community.creator_id || undefined,
+      createdAt: new Date(row.community.created_at),
+    },
+  };
+}
+
+export async function getUserPosts(userId: string): Promise<Post[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      author:profiles!posts_author_id_fkey(*),
+      community:communities!posts_community_id_fkey(*)
+    `)
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching user posts:', error);
+    throw error;
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  return (data as unknown as PostRow[]).map(transformPost);
+}
+
+type CommentRow = Database['public']['Tables']['comments']['Row'] & {
+  author: Database['public']['Tables']['profiles']['Row'];
+  post: Database['public']['Tables']['posts']['Row'] & {
+    community: Database['public']['Tables']['communities']['Row'];
+  };
+};
+
+function transformCommentWithPost(row: CommentRow): CommentWithPostContext {
+  return {
+    id: row.id,
+    content: row.content,
+    postId: row.post_id,
+    parentId: row.parent_id || undefined,
+    votes: row.vote_count,
+    createdAt: new Date(row.created_at),
+    author: {
+      id: row.author.id,
+      username: row.author.username,
+      avatar: row.author.avatar || undefined,
+      karma: row.author.karma,
+      bio: row.author.bio || undefined,
+      createdAt: new Date(row.author.created_at),
+    },
+    post: {
+      id: row.post.id,
+      title: row.post.title,
+      community: {
+        id: row.post.community.id,
+        slug: row.post.community.slug,
+        name: row.post.community.name,
+      },
+    },
+  };
+}
+
+export async function getUserComments(
+  userId: string
+): Promise<CommentWithPostContext[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('comments')
+    .select(`
+      *,
+      author:profiles!comments_author_id_fkey(*),
+      post:posts(
+        *,
+        community:communities!posts_community_id_fkey(*)
+      )
+    `)
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching user comments:', error);
+    throw error;
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  return (data as unknown as CommentRow[]).map(transformCommentWithPost);
 }
 

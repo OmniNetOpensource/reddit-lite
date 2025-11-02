@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import clsx from "clsx";
+import { ImageUploader } from "@/components/submit/image-uploader";
 
 type PostType = "text" | "link" | "image";
 
@@ -27,7 +28,8 @@ export default function SubmitPage() {
   const [selectedCommunity, setSelectedCommunity] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [url, setUrl] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -65,13 +67,13 @@ export default function SubmitPage() {
       return;
     }
 
-    if (postType === "link" && !url.trim()) {
+    if (postType === "link" && !linkUrl.trim()) {
       setError("Please enter a URL");
       return;
     }
 
-    if (postType === "image" && !url.trim()) {
-      setError("Please enter an image URL");
+    if (postType === "image" && !imageUrl) {
+      setError("Please upload an image");
       return;
     }
 
@@ -82,8 +84,8 @@ export default function SubmitPage() {
         title: title.trim(),
         content: postType === "text" ? content.trim() : undefined,
         type: postType,
-        url: postType === "link" ? url : undefined,
-        imageUrl: postType === "image" ? url : undefined,
+        url: postType === "link" ? linkUrl.trim() : undefined,
+        imageUrl: postType === "image" ? imageUrl ?? undefined : undefined,
         communityId: selectedCommunity,
       });
 
@@ -206,22 +208,15 @@ export default function SubmitPage() {
             <input
               type="url"
               placeholder="URL"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
               className="w-full bg-transparent outline-none placeholder:text-zinc-400"
               required
             />
           )}
 
           {postType === "image" && (
-            <input
-              type="url"
-              placeholder="Image URL"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              className="w-full bg-transparent outline-none placeholder:text-zinc-400"
-              required
-            />
+            <ImageUploader value={imageUrl} onChange={setImageUrl} />
           )}
         </div>
 

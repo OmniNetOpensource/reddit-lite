@@ -195,7 +195,7 @@ export async function leaveCommunity(communityId: string): Promise<void> {
 /**
  * Check if user is a member of a community
  */
-export async function isUserMember(communityId: string): Promise<boolean> {
+export async function isMemberOfCommunity(communityId: string): Promise<boolean> {
   const supabase = createClient();
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -216,6 +216,8 @@ export async function isUserMember(communityId: string): Promise<boolean> {
 
   return true;
 }
+
+export const isUserMember = isMemberOfCommunity;
 
 /**
  * Get communities that a user is a member of

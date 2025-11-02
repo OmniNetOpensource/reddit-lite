@@ -27,6 +27,7 @@ function transformPost(
     type: postRow.type,
     url: postRow.url || undefined,
     imageUrl: postRow.image_url || undefined,
+    isSaved: false,
     votes: postRow.vote_count,
     commentCount: postRow.comment_count,
     createdAt: new Date(postRow.created_at),
@@ -218,15 +219,41 @@ export async function updatePost(
 ): Promise<Post> {
   const supabase = createClient();
 
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("You must be logged in to update a post");
+  }
+
+  const updates: Database["public"]["Tables"]["posts"]["Update"] = {};
+
+  if (input.title !== undefined) {
+    updates.title = input.title;
+  }
+  if (input.content !== undefined) {
+    updates.content = input.content;
+  }
+  if (input.url !== undefined) {
+    updates.url = input.url;
+  }
+  if (input.imageUrl !== undefined) {
+    updates.image_url = input.imageUrl;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    throw new Error("Nothing to update");
+  }
+
+  updates.updated_at = new Date().toISOString();
+
   const { data, error } = await supabase
     .from("posts")
-    .update({
-      title: input.title,
-      content: input.content,
-      url: input.url,
-      image_url: input.imageUrl,
-    })
+    .update(updates)
     .eq("id", id)
+    .eq("author_id", user.id)
     .select(
       `
       *,
@@ -234,11 +261,15 @@ export async function updatePost(
       community:communities!posts_community_id_fkey(*)
     `
     )
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("Error updating post:", error);
     throw error;
+  }
+
+  if (!data) {
+    throw new Error("Post not found or you do not have permission to update it");
   }
 
   return transformPost(data, data.author, data.community);
@@ -250,11 +281,29 @@ export async function updatePost(
 export async function deletePost(id: string): Promise<void> {
   const supabase = createClient();
 
-  const { error } = await supabase.from("posts").delete().eq("id", id);
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error("You must be logged in to delete a post");
+  }
+
+  const { data, error } = await supabase
+    .from("posts")
+    .delete()
+    .eq("id", id)
+    .eq("author_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("Error deleting post:", error);
     throw error;
+  }
+
+  if (!data) {
+    throw new Error("Post not found or you do not have permission to delete it");
   }
 }
 

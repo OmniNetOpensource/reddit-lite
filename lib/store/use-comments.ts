@@ -2,6 +2,75 @@ import { create } from 'zustand';
 import { Comment } from '../types';
 import { getCommentsByPostId, voteComment, getUserCommentVotes } from '../api/comments';
 
+const insertReply = (
+  comments: Comment[],
+  parentId: string,
+  newComment: Comment
+): { comments: Comment[]; inserted: boolean } => {
+  let inserted = false;
+
+  const updated = comments.map((comment) => {
+    if (comment.id === parentId) {
+      inserted = true;
+      const replies = comment.replies ? [newComment, ...comment.replies] : [newComment];
+      return { ...comment, replies };
+    }
+
+    if (comment.replies && comment.replies.length > 0) {
+      const result = insertReply(comment.replies, parentId, newComment);
+      if (result.inserted) {
+        inserted = true;
+        return { ...comment, replies: result.comments };
+      }
+    }
+
+    return comment;
+  });
+
+  return { comments: inserted ? updated : comments, inserted };
+};
+
+const commentExists = (comments: Comment[], id: string): boolean => {
+  return comments.some((comment) => {
+    if (comment.id === id) {
+      return true;
+    }
+
+    if (comment.replies && comment.replies.length > 0) {
+      return commentExists(comment.replies, id);
+    }
+
+    return false;
+  });
+};
+
+const updateCommentInList = (comments: Comment[], updatedComment: Comment): Comment[] => {
+  return comments.map((comment) => {
+    if (comment.id === updatedComment.id) {
+      return {
+        ...comment,
+        ...updatedComment,
+        replies: updatedComment.replies ?? comment.replies,
+      };
+    }
+
+    if (comment.replies && comment.replies.length > 0) {
+      return { ...comment, replies: updateCommentInList(comment.replies, updatedComment) };
+    }
+
+    return comment;
+  });
+};
+
+const removeCommentFromList = (comments: Comment[], commentId: string): Comment[] => {
+  return comments
+    .filter((comment) => comment.id !== commentId)
+    .map((comment) => ({
+      ...comment,
+      replies: comment.replies ? removeCommentFromList(comment.replies, commentId) : comment.replies,
+    }));
+};
+
 interface CommentVote {
   commentId: string;
   direction: 'up' | 'down' | null;
@@ -18,6 +87,8 @@ interface CommentsState {
   addComment: (comment: Comment) => void;
   vote: (commentId: string, direction: 'up' | 'down') => Promise<void>;
   loadUserVotes: (commentIds: string[]) => Promise<void>;
+  updateCommentInState: (comment: Comment) => void;
+  removeComment: (commentId: string) => void;
   reset: () => void;
 }
 
@@ -57,9 +128,23 @@ export const useComments = create<CommentsState>((set, get) => ({
     }
   },
   
-  addComment: (comment) => set((state) => ({
-    comments: [comment, ...state.comments]
-  })),
+  addComment: (comment) => set((state) => {
+    if (commentExists(state.comments, comment.id)) {
+      return { comments: state.comments };
+    }
+
+    if (!comment.parentId) {
+      return { comments: [comment, ...state.comments] };
+    }
+
+    const { comments, inserted } = insertReply(state.comments, comment.parentId, comment);
+
+    if (!inserted) {
+      return { comments: [comment, ...state.comments] };
+    }
+
+    return { comments };
+  }),
   
   vote: async (commentId, direction) => {
     const { votes, comments } = get();
@@ -135,6 +220,14 @@ export const useComments = create<CommentsState>((set, get) => ({
       console.error('Error loading user votes:', error);
     }
   },
+
+  updateCommentInState: (comment) => set((state) => ({
+    comments: updateCommentInList(state.comments, comment),
+  })),
+
+  removeComment: (commentId) => set((state) => ({
+    comments: removeCommentFromList(state.comments, commentId),
+  })),
   
   reset: () => set({
     comments: [],
